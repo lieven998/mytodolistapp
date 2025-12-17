@@ -1,0 +1,360 @@
+<!-- todolist-3.0 -->
+<!-- 增加响应式，微调css，增加时间显示 -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>我的待办事项</title>
+    <style>
+        /* 任务项基础样式 */
+        .task-item {
+            display: flex;
+            align-items: stretch; /* 改为 stretch 让内容填满高度 */
+            justify-content: space-between;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: all 0.2s;
+            min-height: 60px; /* 确保有足够高度显示两行 */
+        }
+        .task-item:hover {
+            transform: translateX(2px);
+            background: #e9ecef;
+        }
+        /*空任务*/
+        .empty-state {
+            text-align: center;
+            color: #6c757d;
+            /* padding: 40px; */
+            padding: 10px;
+            font-style: italic;
+        }
+        /* 未完成任务样式 */
+        .task-pending {
+            border-left: 4px solid #ffc107; /* 黄色边框 */
+        }
+        /* 已完成任务样式 */
+        .task-completed {
+            border-left: 4px solid #28a745; /* 绿色边框 */
+            /* text-decoration: line-through; */
+            /* color: #6c757d; */
+        }
+        .task-completed .task-text {
+            text-decoration: line-through;
+            color: #6c757d;
+        }
+        /* 任务内容容器 */
+        .task-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 0; /* 防止内容溢出 */
+        }
+        /* 任务文本样式 */
+        /* 修改 .task-text 样式 - 去掉 nowrap，添加多行文本处理 */
+        .task-text {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            /* 移除这行 ↓ */
+            /* overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap; */
+            
+            /* 添加这些 ↓ */
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            /* 标准属性 - 适用于现代浏览器 */
+            line-clamp: 2;
+            /* 供应商前缀版本 - 确保旧版浏览器兼容 */
+            -webkit-line-clamp: 2; /* 最多显示2行 */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.4; /* 增加行高提高可读性 */
+            word-break: break-word; /* 长单词换行 */
+            max-height: 2.8em; /* 2行的高度 */
+        }
+        /* 任务时间 */
+        .task-time {
+            font-size: 12px;
+            color: #6c757d;
+            opacity: 0.8;
+        }
+        /* 已完成任务的时间 */
+        .task-completed .task-time {
+            opacity: 0.6;
+            /* text-decoration: line-through; */
+        }
+
+        /* 操作按钮容器 */
+        .task-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;         /* 垂直居中 */
+        }
+        /* 按钮基础样式 */
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        /* 特定按钮样式覆盖 */
+        /* 完成按钮 */
+        .btn-complete {
+            background: #28a745;         /* 蓝色 */
+            color: white;
+            padding: 8px 16px;           /* 稍小一些 */
+            font-size: 14px;             /* 稍小字体 */
+            min-height: 36px;            /* 稍小高度 */
+        }
+        .btn-complete:hover {
+            background: #1ea23d;
+        }
+        /* 删除按钮 */
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            min-height: 36px;
+        }
+        .btn-delete:hover {
+            background: #d32f2f;
+        }
+        /* 导入导出按钮 */
+        .btn-export {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-export:hover {
+            background: #1e8b9c;
+        }
+        .btn-import {
+            background: #6f42c1;
+            color: white;
+        }
+        .btn-import:hover {
+            background: #532b9d;
+        }
+        /* 新增导入导出按钮样式 */
+        .data-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .file-input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        /* 通知样式 */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(100px);
+            transition: all 0.3s ease;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        /* 不同类型通知的颜色 */
+        .notification.info {
+            background: #17a2b8;  /* 蓝色 */
+        }
+        .notification.success {
+            background: #28a745;  /* 绿色 */
+        }
+        .notification.warning {
+            background: #ffc107;  /* 黄色 */
+            color: #212529;
+        }
+        .notification.error {
+            background: #dc3545;  /* 红色 */
+        }
+        /* 增强的加载样式 */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+            position: relative;
+            transition: opacity 0.3s;
+        }
+
+        /* 加载动画覆盖层 */
+        .loading::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 10;
+            border-radius: 8px;
+        }
+
+        /* 加载动画 */
+        .loading::after {
+            content: '⏳';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            z-index: 11;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* 禁用状态 */
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+    </style>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .input-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        /* 找到 #taskInput 样式，修改如下： */
+        #taskInput {
+            padding: 12px 15px;          /* 增加内边距 */
+            flex: 1;
+            border: 2px solid #ddd;      /* 增加边框宽度 */
+            border-radius: 8px;          /* 增加圆角 */
+            font-size: 16px;             /* 增大字体 */
+            font-family: inherit;        /* 继承父元素字体 */
+            transition: all 0.3s ease;   /* 平滑过渡效果 */
+            background: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 添加轻微阴影 */
+        }
+        #taskInput:focus {
+            outline: none;
+            border-color: #4CAF50;       /* 聚焦时改变边框颜色 */
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+        /* 按钮基础样式 - 统一所有按钮 */
+        button {
+            padding: 12px 24px;          /* 增加内边距 */
+            background: #4CAF50;         /* 绿色主题 */
+            color: white;
+            border: none;
+            border-radius: 8px;          /* 圆角 */
+            cursor: pointer;
+            font-size: 16px;             /* 增大字体 */
+            font-weight: 500;            /* 中等粗细 */
+            transition: all 0.2s ease;
+            font-family: inherit;        /* 统一字体 */
+            min-height: 44px;            /* 最小高度，适合触摸 */
+        }
+
+        button:hover {
+            background: #45a049;         /* 悬停时稍深的绿色 */
+            transform: translateY(-1px); /* 轻微上浮效果 */
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);    /* 点击时恢复 */
+            box-shadow: 0 2px 6px rgba(76, 175, 80, 0.2);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 640px) {
+            body {
+                margin: 15px auto;
+                padding: 15px;
+            }
+            
+            .input-section {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            #taskInput, 
+            #taskInput + button {
+                /* width: 100%; */
+                border-radius: 8px;
+            }
+            
+            .task-item {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+            
+            .task-actions {
+                justify-content: flex-end;
+            }
+            
+            .btn-complete,
+            .btn-delete {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>我的待办事项</h1>
+
+    <!-- 输入 -->
+    <div class="input-section">
+        <input type="text" id="taskInput" placeholder="输入新任务...">
+        <button onclick="addTask()">添加任务</button>
+    </div>
+
+    <div id="taskStats" style="margin-top: 20px; color: #666;"></div>
+
+    <!-- 任务列表 -->
+    <ul id="taskList" style="list-style: none; padding: 0; margin-top: 20px;"></ul>
+
+    <!-- 新增导入导出按钮 -->
+    <div class="data-actions">
+        <button class="btn btn-export" onclick="exportData()">导出数据</button>
+        
+        <div class="file-input-wrapper">
+            <button class="btn btn-import">导入数据</button>
+            <input type="file" id="importFile" class="file-input" accept=".json" onchange="importData(event)">
+        </div>
+    </div>
+    
+    <div id="notification" class="notification"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
